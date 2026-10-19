@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lovely Land Line</title>
+    <link rel="stylesheet" href="stylesheet.css">
+    <script src="LLLcode.js"></script>
+    <script src="assets.js"></script>
+    <script src="game.js"></script>
+    <script src="utils.js"></script>
+  </head>
+
+  <body id="body" onload="readyGame()">
+    <div class="main">
+      <div class="header">
+        <div class="header-box" id="logo">logo</div>
+        <div class="header-box dial">
+          <canvas class="dial-box" id="dial1"></canvas>
+          <canvas class="dial-box" id="dial2"></canvas>
+          <canvas class="dial-box" id="dial3"></canvas>
+          <canvas class="dial-box" id="dial4"></canvas>
+        </div>
+
+        <div class="header-box" id="state-indicator">state indicator</div>
+      </div>
+
+      <iframe id="display"></iframe>
+    </div>
+  </body>
+</html>
