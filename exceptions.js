@@ -3,9 +3,35 @@
 // https://stackoverflow.com/questions/7802744/adding-an-img-element-to-a-div-with-javascript
 // ---------------
 const EXCEPTIONS = {
-    rrrr: (dialInput) => {
+    bygr: (dialInput) => {
         const img = document.createElement("img");
-        img.src = "directory/" + String(dialInput) + "/" + String(dialInput) + ".jpg";
+        img.src = "directory/" + String(dialInput) + "/" + String(dialInput) + ".png";
+        return [img];
+    },
+
+    rryy: (dialInput) => {
+        const img = document.createElement("img");
+        img.src = "directory/" + String(dialInput) + "/" + String(dialInput) + ".png";
+        return [img];
+    },
+
+    rrgr: (dialInput) => {
+        const img = document.createElement("img");
+        img.src = "directory/" + String(dialInput) + "/" + String(dialInput) + ".png";
+        return [img];
+    },
+
+    // multiple images, need to edit this asap
+    rggg: (dialInput) => {
+        const img = document.createElement("img");
+        img.src = "directory/" + String(dialInput) + "/" + String(dialInput) + ".png";
+        return [img];
+    },
+
+    // multiple images, need to edit this asap
+    gggg: (dialInput) => {
+        const img = document.createElement("img");
+        img.src = "directory/" + String(dialInput) + "/" + String(dialInput) + ".png";
         return [img];
     },
 
