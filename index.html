@@ -9,9 +9,10 @@
     <script src="assets.js"></script>
     <script src="game.js"></script>
     <script src="utils.js"></script>
+    <script src="exceptions.js"></script>
   </head>
 
-  <body id="body" onload="readyGame()">
+  <body id="body" tabindex="-1" onload="readyGame()">
     <div class="main">
       <div class="header">
         <div class="header-box" id="logo">logo</div>
@@ -25,7 +26,28 @@
         <div class="header-box" id="state-indicator">state indicator</div>
       </div>
 
-      <iframe id="display"></iframe>
+      <iframe id="display" src=""></iframe>
+
+      <div id="DIAL">
+        DIAL MODE
+      </div>
+
+      <div id="CALL">
+        CALL MODE
+        LOADING
+      </div>
+
+      <div id="MESSAGE">
+        MESSAGE MODE
+        PRESS Q TO RECORD
+        PRESS W TO STOP
+        <div id="exceptions"></div>
+        <div id="recordings-list"></div>
+      </div>
+
+      <div id="CONTENT">
+        CONTENT MODE
+      </div>
     </div>
   </body>
 </html>

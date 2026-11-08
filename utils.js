@@ -1,25 +1,57 @@
-// shared variables
+// ---------------
+// SHARED VARIABLES
+// https://stackoverflow.com/questions/67378379/how-to-get-the-sample-rate-from-a-mediadevices-getusermedia-stream
+// ---------------
 const dials = []
 let current = 0;
 let dialInput = "";
+let directory = null;
 
-// console log with toggle
+const MESSAGE_SERVER = "http://localhost:3000";
+let pendingEntry = null;
+
+const OGG_TYPE = "audio/ogg; codecs=opus";
+let recording = false;
+let mediaRecorder = null;
+let recordingStream = null;
+let audioChunks = [];
+
+let recordingItems = [];
+let recordingIndex = 0;
+
+let loadGuard = 0;
+
+// ---------------
+// HELPER FUNCTIONS
+// https://community.shopify.com/t/how-to-set-iframe-src-from-javascript/10672
+// https://stackoverflow.com/questions/7346563/loading-local-json-file
+// https://stackoverflow.com/questions/34789321/js-read-json-file-and-use-as-an-object
+// ---------------
 function showConsoleLog( message ) {
     if (debug) {
         console.log(message);
     }
 }
 
-//const iframe = document.getElementById('display');
+function setIframe ( setSrc ) {
+    document.getElementById('display').setAttribute("src", setSrc);
+    // HOLY SHIT THE SHOPIFY SOLUTION WORKS WHAT THE FUCK???
+    // ok so...
+    // you need to write "setAttribute" in order to access the iframe...
+    // that's fucked up
+}
+
+async function getJSON() {
+    const response = await fetch("directory/directory.json");
+    directory = await response.json();
+    showConsoleLog(`[utils.js - getJSON] Fetched JSON: ${directory}`);
+}
 
 function readyGame() {
+    getJSON();
 
-    //IFRAME
-    //iframe.addEventListener('load', () => {
-    //    showConsoleLog("iframe loaded");
-    //});
+    setIframe("about:blank")
 
-    // dials
     for (let i = 1; i <= DIAL_COUNT; i++) {
         const canvas = document.getElementById('dial' + String(i));
         const context = canvas.getContext('2d');
@@ -35,31 +67,31 @@ function drawDial({ canvas, context }, color) {
     context.fillRect(0, 0, canvas.width, canvas.height);
 }
 
-function setDialedColor( combo ) {
-    showConsoleLog("Set Dialed Color: ");
+function setDialColor( combo ) {
     dialedColor = String(combo);
-    showConsoleLog(dialedColor);
+    showConsoleLog(`[utils.js - setDialColor] Set dial color: ${dialedColor}`);
 }
 
 function resetDials() {
     dials.forEach(d => drawDial(d, 'black'));
     current = 0;
     dialInput = "";
-    setDialedColor("");
+    setDialColor("");
 }
 
-// Single input addEventListener
 function handleInput(event) {
     if (event.repeat) return;
     const key = event.key.toLowerCase();
 
     if (GAME.State === "DIAL") {
         handleDial(key);
-    } else if (GAME.State === "CALL") {
-        handleCall(key);
+    } else if (GAME.State === "MESSAGE") {
+        handleMessage(key);
+    } else if (GAME.State === "CONTENT") {
+        handleContent(key);
     } else {
-        // how did you get here
-        showConsoleLog("[state input error]");
+        // how to fuck did you get here
+        showConsoleLog(`[utils.js - handleInput] State input error: ${GAME.State}`);
     }
 }
 
@@ -68,38 +100,335 @@ function handleInput(event) {
 // ---------------
 function handleDial(key) {
     if (key === 'e') {
-        showConsoleLog('reset');
+        showConsoleLog(`[utils.js - handleDial] Reset dials`);
         resetDials();
         return;
     }
 
     const color = COLORS[key];
     if (!color || current >= DIAL_COUNT) return;
-    showConsoleLog(color);
+    showConsoleLog(`[utils.js - handleDial] Dial color: ${color}`);
 
     drawDial(dials[current], color);
     dialInput = dialInput + String(color)[0];
-    showConsoleLog(dialInput);
-    showConsoleLog(current);
+    showConsoleLog(`[utils.js - handleDial] Dial input: ${dialInput}`);
+    showConsoleLog(`[utils.js - handleDial] Current input index: ${current}`);
     current++;
 
     if (current === DIAL_COUNT) {
-        showConsoleLog("RINGRINGRING");
-        setDialedColor(dialInput);
+        showConsoleLog(`[utils.js - handleDial] Calling: ${dialInput}`);
+        setDialColor(dialInput);
         nextState();
     }
 }
 
-
-
 // ---------------
 // CALL MODE
+// https://stackoverflow.blog/2022/06/02/a-beginners-guide-to-json-the-data-format-for-the-internet/
+// https://stackoverflow.com/questions/28780485/parsing-json-object-to-get-filelocation
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/hasOwn
 // ---------------
-function handleCall(key) {
+function call() {
+    if (directory == null) {
+        showConsoleLog(`[utils.js - call] Directory not loaded`);
+        setFlag("NONE");
+        return;
+    }
+
+    // Empty slot, add first recording
+    if (!Object.hasOwn(directory, dialInput)) {
+        showConsoleLog(`[utils.js - call] Empty slot, add first recording`);
+        pendingEntry = dialInput;
+        setFlag("MESSAGE_FLAG");
+        return;
+    }
+
+    const flagValue = directory[dialInput]
+
+    if (flagValue === "message") {
+        showConsoleLog(`[utils.js - call] Existing message detected`);
+        pendingEntry = dialInput;
+        setFlag("MESSAGE_FLAG");
+    } else {
+        showConsoleLog(`[utils.js - call] Content detected`);
+        pendingEntry = null;
+        setFlag("CONTENT_FLAG");
+    }
+
+    return;
+}
+
+// ---------------
+// CONTENT MODE
+// https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/blur
+// https://stackoverflow.com/questions/27550415/tabindex-doesnt-make-a-label-focusable-using-tab-key
+// https://stackoverflow.com/questions/5076409/return-focus-from-iframe-to-parent
+// ---------------
+function handleContent(key) {
+    // copy-paste this in the content html
+
+    // at the very beginning
+    // -----------------
+    //<script>
+    //window.focus();
+    //</script>
+    // -----------------
+
+    // just before </head>
+    // -----------------
+    //<script>
+    //document.addEventListener("keydown", e => {
+        //if (e.key.toLowerCase() === "e") {
+            //parent.regainFocus();
+        //}
+    //});
+    //</script>
+    // -----------------
+}
+
+function regainFocus() {
+    setIframe("about:blank");
+    window.focus();
+    document.body.focus();
+    setFlag("NONE");
+    nextState();
+    return;
+}
+
+// ---------------
+// MESSAGE MODE
+// ---------------
+function handleMessage(key) {
     if (key === 'e') {
-        showConsoleLog('back to call mode');
+        showConsoleLog('[utils.js - handleMessage] e, back to DIAL mode');
+        stopRecording();
+        stopMessage();
         setFlag("NONE");
         nextState();
         return;
     }
+
+    if (key === 'q') {
+        showConsoleLog('[utils.js - handleMessage] q, start recording');
+        startRecording();
+    }
+
+    if (key === 'w') {
+        showConsoleLog('[utils.js - handleMessage] w, stop recording');
+        stopRecording();
+    }
+
+    if (key === 'a') {
+        showConsoleLog('[utils.js - handleMessage] a, previous recording');
+        chooseMessage(-1);
+        stopMessage();
+    }
+
+    if (key === 's') {
+        showConsoleLog('[utils.js - handleMessage] s, next recording');
+        chooseMessage(1);
+        stopMessage();
+    }
+
+    if (key === 'd') {
+        showConsoleLog('[utils.js - handleMessage] d, play recording');
+        playMessage();
+    }
+}
+
+function chooseMessage(step) {
+    if (recordingItems.length === 0) {
+        return;
+    }
+
+    highlightMessage(false);
+    recordingIndex = (recordingIndex + step + recordingItems.length) % recordingItems.length;
+    highlightMessage(true);
+}
+
+function playMessage() {
+    if (recordingItems.length === 0) {
+        return;
+    }
+
+    recordingItems.forEach(a => { if (a !== recordingItems[recordingIndex]) a.pause(); });
+    const audio = recordingItems[recordingIndex];
+    audio.currentTime = 0;
+    audio.play()
+}
+
+function stopMessage() {
+    if (recordingItems.length === 0) {
+        return;
+    }
+
+    recordingItems.forEach(a => a.pause());
+    recordingItems[recordingIndex].currentTime = 0;
+}
+
+function highlightMessage(toggle) {
+    const audio = recordingItems[recordingIndex];
+    
+    if (!audio) {
+        return;
+    }
+
+    audio.style.outline = toggle ? "5px solid orange" : "none";
+}
+
+// ---------------
+// RECORDING AUDIO UTILS
+// https://anwaarulislaam.medium.com/build-a-voice-recorder-app-using-only-javascript-and-html-212114a468ca
+// ---------------
+function startRecording() {
+    if (recording || !pendingEntry) {
+        return;
+    }
+
+    recording = true; // Recording lock
+    const entry = pendingEntry; // Lock the folder for this recording
+
+    navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+            recordingStream = stream;
+            const options = MediaRecorder.isTypeSupported(OGG_TYPE) ? { mimeType: OGG_TYPE } : {};
+            mediaRecorder = new MediaRecorder(stream, options);
+            audioChunks = [];
+
+            mediaRecorder.addEventListener("dataavailable", x => audioChunks.push(x.data));
+
+            mediaRecorder.addEventListener("stop", () => {
+                recordingStream.getTracks().forEach(i => i.stop()); // release the mic
+                const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+
+                // Save first to avoid being blocked by UI
+                saveRecording(entry, blob);
+                addRecording(blob);
+            });
+
+            mediaRecorder.start();
+        })
+        .catch(error => {
+            recording = false;
+            showConsoleLog(`[utils.js - startRecording] Error: ${error}`);
+        });
+}
+
+function stopRecording() {
+    if (!recording || !mediaRecorder || mediaRecorder.state === "inactive") {
+        return;
+    }
+
+    recording = false; // Release recording lock
+    mediaRecorder.stop(); // Release mediaRecorder
+}
+
+function addRecording(blob, select=true) {
+    const list = document.getElementById("recordings-list");
+
+    if (!list) {
+        return;
+    }
+
+    const audio = document.createElement("audio");
+    audio.src = URL.createObjectURL(blob);
+    audio.controls = true;
+    list.appendChild(audio);
+    recordingItems.push(audio);
+
+    if (select) {
+        highlightMessage(false);
+        recordingIndex = recordingItems.length - 1;
+        highlightMessage(true);
+    }
+}
+
+function extFor(mimeType) {
+    return mimeType.includes("ogg") ? "ogg" : "webm";
+}
+
+async function saveRecording(name, blob) {
+    showConsoleLog(`[utils.js - saveRecording] Uploading ${blob.size} bytes, type ${blob.type}`);
+    highlightMessage(false);
+
+    if (blob.size === 0) {
+        showConsoleLog(`[utils.js - saveRecording] Blob size is 0`);
+        return;
+    };
+
+    const ext = extFor(blob.type);
+    const res = await fetch(
+        `${MESSAGE_SERVER}/recording?name=${encodeURIComponent(name)}&ext=${ext}`,
+        { method: "POST", body: blob }
+    );
+
+    if (!res.ok) {
+        showConsoleLog(`[utils.js - saveRecording] Recording upload failed: ${res.status}`);
+    }
+
+    const file = await res.text();
+
+    if (!Object.hasOwn(directory, name)) {
+        await addDirectoryEntry(name);
+    }
+
+    recordingIndex = recordingItems.length - 1;
+    highlightMessage(true);
+    showConsoleLog(`[utils.js - saveRecording] Saved: ${name}/${file}`);
+}
+
+async function loadRecordings(name) {
+    const token = ++loadGuard;
+
+    const list = document.getElementById("recordings-list");
+    list.innerHTML = "";
+    recordingItems = [];
+    recordingIndex = 0;
+
+    const res = await fetch(`${MESSAGE_SERVER}/list?name=${encodeURIComponent(name)}`);
+
+    if (!res.ok) {
+        showConsoleLog(`[utils.js - loadRecordings] List failed: ${res.status}`);
+    }
+
+    const files = await res.json();
+
+    for (const file of files) {
+        if (token !== loadGuard) {
+            return; // newer load started, stop doing stuff for now
+        }
+
+        const fileRes = await fetch(
+            `${MESSAGE_SERVER}/file?name=${encodeURIComponent(name)}&file=${encodeURIComponent(file)}`
+        );
+
+        if (!fileRes.ok) {
+            showConsoleLog(`[utils.js - loadRecordings] Could not load: ${file}: ${fileRes.status}`);
+            continue;
+        }
+
+        addRecording(await fileRes.blob(), false);
+    }
+
+    if (token === loadGuard) {
+        highlightMessage(true);
+    }
+
+    showConsoleLog(`[utils.js - loadRecordings] Loaded ${files.length} recordings for ${name}`);
+}
+
+async function addDirectoryEntry(name) {
+    directory[name] = "message";
+
+    const res = await fetch(`${MESSAGE_SERVER}/directory`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(directory, null, 2)
+    });
+
+    if (!res.ok) {
+        showConsoleLog(`[utils.js - addDirectoryEntry] Directory save failed: ${res.status}`);
+    }
+
+    showConsoleLog(`[utils.js - addDirectoryEntry] Added directory entry: ${name}`);
 }
