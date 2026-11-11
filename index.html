@@ -4,18 +4,34 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lovely Land Line</title>
+
+    <link rel="icon" type="image/x-icon" href="assets/favicon.png">
     <link rel="stylesheet" href="stylesheet.css">
+
+    <script src="lib/p5.js"></script>
+    <script src="lib/p5.sound.js"></script>
+
     <script src="LLLcode.js"></script>
-    <script src="assets.js"></script>
     <script src="game.js"></script>
     <script src="utils.js"></script>
     <script src="exceptions.js"></script>
+    <script src="message-visualizer.js"></script>
+    <script src="sfx-handler.js"></script>
+    <script src="vfx-handler.js"></script>
   </head>
 
+  <div id="background-layer"></div>
   <body id="body" tabindex="-1" onload="readyGame()">
     <div class="main">
       <div class="header">
-        <div class="header-box" id="logo">logo</div>
+        <div class="header-box">
+
+        <div class="header-box" id="logo">
+          ✆ Lovely ♪ ☎︎ ♪ <br> ༘ ☏ Land ₊ ༘ ☏ <br> ♪ ☎︎ ♪ Line ˚✆ 
+        </div>
+
+        </div>
+
         <div class="header-box dial">
           <canvas class="dial-box" id="dial1"></canvas>
           <canvas class="dial-box" id="dial2"></canvas>
@@ -23,30 +39,70 @@
           <canvas class="dial-box" id="dial4"></canvas>
         </div>
 
-        <div class="header-box" id="state-indicator">state indicator</div>
+        <div class="header-box" id="state-indicator">
+          <img id="DIAL-ICON" src="assets/interface/dial-ui.png" alt="DIAL">
+          <div id="CALL-ICON">
+            <div id="slideshow">
+              <img class="slide" src="assets/icons/1.jpg" alt="">
+              <img class="slide" src="assets/icons/2.jpg" alt="">
+              <img class="slide" src="assets/icons/3.jpg" alt="">
+              <img class="slide" src="assets/icons/4.jpg" alt="">
+              <img class="slide" src="assets/icons/5.jpg" alt="">
+              <img class="slide" src="assets/icons/6.jpg" alt="">
+              <img class="slide" src="assets/icons/7.jpg" alt="">
+            </div>
+          </div>
+          <img id="MESSAGE-ICON" src="assets/interface/message-ui.png" alt="MESSAGE">
+          <img id="CONTENT-ICON" src="" alt="THAT'S A BUG, NEXT WEEK BA DAPAT YUNG SCREEN NA ITO">
+        </div>
       </div>
 
-      <iframe id="display" src=""></iframe>
-
       <div id="DIAL">
-        DIAL MODE
+        <span>D</span>
+        <span>i</span>
+        <span>a</span>
+        <span>l</span>
+        <span>!</span>
       </div>
 
       <div id="CALL">
-        CALL MODE
-        LOADING
+        <span>C</span>
+        <span>a</span>
+        <span>l</span>
+        <span>l</span>
+        <span>i</span>
+        <span>n</span>
+        <span>g</span>
+        <span>.</span>
+        <span>.</span>
+        <span>.</span>
+      </div>
+
+      <div id="RECORDING" hidden>
+        <span>R</span>
+        <span>e</span>
+        <span>c</span>
+        <span>o</span>
+        <span>r</span>
+        <span>d</span>
+        <span>i</span>
+        <span>n</span>
+        <span>g</span>
+        <span>.</span>
+        <span>.</span>
+        <span>.</span>
       </div>
 
       <div id="MESSAGE">
-        MESSAGE MODE
-        PRESS Q TO RECORD
-        PRESS W TO STOP
+        <div id="message-visualizer" tabindex="-1"></div>
         <div id="exceptions"></div>
-        <div id="recordings-list"></div>
+        <div id="message-indicator"></div>
+        <div id="recordings-list">
+        </div>
       </div>
 
       <div id="CONTENT">
-        CONTENT MODE
+        <iframe id="display" src=""></iframe>
       </div>
     </div>
   </body>

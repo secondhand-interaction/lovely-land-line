@@ -9,27 +9,53 @@ GAME.Flag = "NONE"; // NONE, MESSAGE_FLAG, CONTENT_FLAG
 // UI TOGGLE
 // https://www.scaler.com/topics/javascript-hide-element/
 // ---------------
+function endTransition() {
+    inTransition = false;
+    displayToggle();
+}
+
 function displayToggle() {
+    if (inTransition) return;
     if (GAME.State === "DIAL") {
         document.getElementById("DIAL").hidden = false;
         document.getElementById("CALL").hidden = true;
         document.getElementById("MESSAGE").hidden = true;
         document.getElementById("CONTENT").hidden = true;
+
+        document.getElementById("DIAL-ICON").hidden = false;
+        document.getElementById("CALL-ICON").hidden = true;
+        document.getElementById("MESSAGE-ICON").hidden = true;
+        document.getElementById("CONTENT-ICON").hidden = true;
     } else if (GAME.State === "CALL") {
         document.getElementById("DIAL").hidden = true;
         document.getElementById("CALL").hidden = false;
         document.getElementById("MESSAGE").hidden = true;
         document.getElementById("CONTENT").hidden = true;
+
+        document.getElementById("DIAL-ICON").hidden = true;
+        document.getElementById("CALL-ICON").hidden = false;
+        document.getElementById("MESSAGE-ICON").hidden = true;
+        document.getElementById("CONTENT-ICON").hidden = true;
     } else if (GAME.State === "MESSAGE") {
         document.getElementById("DIAL").hidden = true;
         document.getElementById("CALL").hidden = true;
         document.getElementById("MESSAGE").hidden = false;
         document.getElementById("CONTENT").hidden = true;
+
+        document.getElementById("DIAL-ICON").hidden = true;
+        document.getElementById("CALL-ICON").hidden = true;
+        document.getElementById("MESSAGE-ICON").hidden = false;
+        document.getElementById("CONTENT-ICON").hidden = true;
     } else if (GAME.State === "CONTENT") {
         document.getElementById("DIAL").hidden = true;
         document.getElementById("CALL").hidden = true;
         document.getElementById("MESSAGE").hidden = true;
         document.getElementById("CONTENT").hidden = false;
+
+        document.getElementById("DIAL-ICON").hidden = true;
+        document.getElementById("CALL-ICON").hidden = true;
+        document.getElementById("MESSAGE-ICON").hidden = true;
+        document.getElementById("CONTENT-ICON").hidden = false;
     } else {
         // how the fuck did you get here
         showConsoleLog(`[game.js - displayToggle] How the fuck did you get here: ${GAME.State}`);
@@ -43,53 +69,42 @@ function displayToggle() {
 function Update() {
     displayToggle();
     if (GAME.State === "DIAL") {
-        // Show DIAL screen
-        setIframe("interface/dial-mode/dial-mode.html");
-
-        // Enable DIAL controls
         resetDials();
     } else if (GAME.State === "CALL") {
-        // Show CALL screen
-        setIframe("interface/call-mode/call-mode.html");
+        playTransitionSound();
 
-        // Check directory
         call();
 
-        // State transition
         nextState();
     } else if (GAME.State === "MESSAGE") {
-        // Show MESSAGE screen
-        setIframe("interface/message-mode/message-mode.html");
-
-        // Exceptions
         const extra = document.getElementById("exceptions");
         clearException(extra);
         applyException(dialInput, extra);
 
-        // Load recordings
         loadRecordings(dialInput);
     } else if (GAME.State === "CONTENT") {
-        // Show CONTENT screen
-        setIframe("interface/dial-mode/content-mode.html");
+        showConsoleLog(`[game.js - Update] NO CONTENT YET`);
         
-        // Load content
-        contentLocation = "directory/" + String(dialInput) + "/" + String(dialInput) + ".html";
-        showConsoleLog(`[game.js - Update] Content location: ${contentLocation}`);
-        setIframe(contentLocation);
-
+        // contentLocation = "directory/" + String(dialInput) + "/" + String(dialInput) + ".html";
+        // showConsoleLog(`[game.js - Update] Content location: ${contentLocation}`);
+        // setIframe(contentLocation);
     } else {
+        // how the fuck did you get here
         showConsoleLog(`[game.js - Update] How the fuck did you get here: ${GAME.State}`);
     }
 }
 
 function setState(state) {
     GAME.State = state;
+
     showConsoleLog(`[game.js - setState] ${GAME.State}`);
+    
     Update();
 }
 
 function setFlag(flag) {
     GAME.Flag = flag;
+
     showConsoleLog(`[game.js - setFlag] ${GAME.Flag}`);
 }
 
@@ -102,7 +117,11 @@ function nextState() {
             if (GAME.Flag === "MESSAGE_FLAG") {
                 setState("MESSAGE");
             } else if (GAME.Flag === "CONTENT_FLAG") {
-                setState("CONTENT");
+                setState("DIAL");
+                setFlag("NONE");
+
+                showConsoleLog(`[game.js - nextState] NO CONTENT YET`);
+                // setState("CONTENT");
             } else {
                 setState("DIAL");
             }

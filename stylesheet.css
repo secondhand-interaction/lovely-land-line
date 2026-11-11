@@ -1,3 +1,4 @@
+/* DEBUGGING UI
 div {
     border: 1px solid #333;
     border-radius: 8px;
@@ -5,6 +6,22 @@ div {
 
 canvas {
     border: 1px solid #222;
+}
+*/
+
+[hidden] {
+    display: none !important;
+}
+
+@font-face {
+    font-family: "Diolce";
+    src: url("assets/fonts/Diolce-Regular.woff2") format("woff2"),
+         url("assets/fonts/Diolce-Regular.woff") format("woff");
+    font-display: swap;
+}
+
+body {
+    font-family: "Diolce", monospace;
 }
 
 .header {
@@ -28,18 +45,48 @@ canvas {
 #logo {
     width: 250px;
     height: 150px;
-    position: relative;
-    top: 0;
-    left: 0;
+    font-size: 36px;
+    line-height: 1;
+    box-sizing: border-box;
+    overflow: hidden;
+    color: blue;
 }
 
 #state-indicator {
-    width: 100px;
-    height: 100px;
-    position: absolute;
-    top: 0;
-    right: 0;
-    margin: 20px;
+    position: relative;
+    top: auto;
+    right: auto;
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 200px;
+    padding: 0;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 15px;
+    margin-right: 10px;
+    box-sizing: border-box;
+}
+
+#state-indicator img {
+    position: relative;
+    height: 100%;
+    width: auto;
+    min-width: 100%;
+    flex: 0 1 auto;
+    object-fit: contain;
+    margin: 0;
+}
+
+
+#state-indicator #CALL-ICON,
+#state-indicator #DIAL-ICON,
+#state-indicator #MESSAGE-ICON,
+#state-indicator #CONTENT-ICON {
+    top: auto;
+    right: auto;
 }
 
 .dial {
@@ -50,9 +97,19 @@ canvas {
     gap: 10px;
 }
 
+/* https://leanrada.com/notes/pure-css-halftone/ */
 .dial-box {
     width: 100px;
     height: 100px;
+    filter: brightness(1) blur(3px);
+}
+
+.dial-box::after {
+    width: 100px;
+    height: 100px;
+    inset: 0;
+    background: radial-gradient(20px at center, white, white);
+    mix-blend-mode: soft-light;
 }
 
 .content {
@@ -60,4 +117,307 @@ canvas {
     height: calc(100vw * (1/3));
     float: right;
     padding: 20px;
+}
+
+.main {
+    position: relative;
+    z-index: 1;
+}
+
+#background-layer {
+    background-image: url('assets/background/background.png');
+    opacity: 0.5;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* https://codepen.io/Nyamyami/pen/WLmmNJ 
+   MY HERO...
+*/
+#DIAL {
+    position: relative;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 50vh;
+    width: 100vw;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+    color: blue;
+}
+
+#DIAL span {
+    font-size: 128px;
+    position: relative;
+    top: 20px;
+    display: inline-block;
+    animation: bounce 1.0s ease infinite alternate;
+}
+
+#DIAL span:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+#DIAL span:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+#DIAL span:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+#DIAL span:nth-child(5) {
+    animation-delay: 0.6s;
+}
+
+#CALL {
+    position: relative;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 50vh;
+    width: 100vw;
+    justify-content: center;
+    align-items: center;
+    display: flex;
+    color: blue;
+}
+
+#CALL span {
+    font-size: 128px;
+    position: relative;
+    top: 20px;
+    display: inline-block;
+    animation: bounce 1.0s ease infinite alternate;
+}
+
+@keyframes bounce {
+    100% {
+        top: -20px;
+    }
+}
+
+#CALL span:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+#CALL span:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+#CALL span:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+#CALL span:nth-child(5) {
+    animation-delay: 0.6s;
+}
+
+#CALL span:nth-child(6) {
+    animation-delay: 0.7s;
+}
+
+#CALL span:nth-child(7) {
+    animation-delay: 0.8s;
+}
+
+#CALL span:nth-child(8) {
+    animation-delay: 0.9s;
+}
+
+#CALL span:nth-child(9) {
+    animation-delay: 1s;
+}
+
+#CALL span:nth-child(10) {
+    animation-delay: 1.1s;
+}
+
+/* https://gist.github.com/Realetive/43c970b72a70badbd2a3 */
+#MESSAGE {
+    position: relative;
+    min-height: 60vh;
+}
+
+#message-visualizer {
+    padding: 0 0 0 15px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 60%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+}
+
+#message-visualizer {
+    width: calc(100% - 30vh);
+}
+
+#message-indicator {
+text-align: right;
+  font-size: 3rem;
+  padding: 0 50px 0 0;
+  color: blue;
+}
+
+#exceptions {
+  position: relative;
+  z-index: 1;
+  margin-right: auto;
+}
+
+audio {
+  margin: 5px 5px 5px 5px;
+  width: 25vh;
+  margin-right: auto;
+}
+
+#recordings-list {
+  position: relative;
+  z-index: 1;
+  max-width: 50vh;
+  max-height: 50vh;
+  overflow-y: auto;
+  margin-left: auto;
+}
+
+#MESSAGE {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr;
+}
+
+#message-indicator {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+#exceptions {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+#recordings-list {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+#exceptions {
+    position: relative;
+    z-index: 1;
+    margin-right: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.exception-img {
+    height: auto;
+    max-width: 25%;
+    display: block;
+}
+
+#exceptions > .exception-img:only-child {
+    min-height: 75vh;
+    max-width: 100%;
+}
+
+#RECORDING {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+#RECORDING span {
+    font-size: 128px;
+    color: red;
+    position: relative;
+    top: 20px;
+    display: inline-block;
+    animation: bounce 1.0s ease infinite alternate;
+}
+
+#RECORDING span:nth-child(2) {
+    animation-delay: 0.1s;
+}
+
+#RECORDING span:nth-child(3) {
+    animation-delay: 0.2s;
+}
+
+#RECORDING span:nth-child(4) {
+    animation-delay: 0.3s;
+}
+
+#RECORDING span:nth-child(5) {
+    animation-delay: 0.6s;
+}
+
+#RECORDING span:nth-child(6) {
+    animation-delay: 0.7s;
+}
+
+#RECORDING span:nth-child(7) {
+    animation-delay: 0.8s;
+}
+
+#RECORDING span:nth-child(8) {
+    animation-delay: 0.9s;
+}
+
+#RECORDING span:nth-child(9) {
+    animation-delay: 1s;
+}
+
+#RECORDING span:nth-child(10) {
+    animation-delay: 1.1s;
+}
+
+#RECORDING span:nth-child(11) {
+    animation-delay: 1.2s;
+}
+
+#RECORDING span:nth-child(12) {
+    animation-delay: 1.3s;
+}
+
+#slideshow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+#slideshow .slide {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 1s ease;
+}
+
+#slideshow .slide.active {
+    opacity: 1;
 }

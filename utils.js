@@ -6,11 +6,12 @@ const dials = []
 let current = 0;
 let dialInput = "";
 let directory = null;
+var dialedColor;
 
-const MESSAGE_SERVER = "http://localhost:3000";
 let pendingEntry = null;
 
-const OGG_TYPE = "audio/ogg; codecs=opus";
+let flavortextIndex = 0;
+
 let recording = false;
 let mediaRecorder = null;
 let recordingStream = null;
@@ -20,6 +21,22 @@ let recordingItems = [];
 let recordingIndex = 0;
 
 let loadGuard = 0;
+
+let holdTimer = null;
+
+let holdIndicatorInterval = null;
+let holdIndicatorStep = 0;
+
+let isRecording = false;
+let inTransition = false;
+
+const audioSources = new WeakMap();
+let audioTap = null;
+
+let recordingLimitTimer = null;
+let limitReached = false;
+
+let slideIndex = 0;
 
 // ---------------
 // HELPER FUNCTIONS
@@ -32,6 +49,20 @@ function showConsoleLog( message ) {
         console.log(message);
     }
 }
+
+function startSlideshow() {
+    const slides = document.querySelectorAll("#slideshow .slide");
+    if (slides.length === 0) return;
+
+    slides[0].classList.add("active");
+
+    setInterval(() => {
+        slides[slideIndex].classList.remove("active");
+        slideIndex = (slideIndex + 1) % slides.length;
+        slides[slideIndex].classList.add("active");
+    }, 3000);
+}
+
 
 function setIframe ( setSrc ) {
     document.getElementById('display').setAttribute("src", setSrc);
@@ -49,7 +80,7 @@ async function getJSON() {
 
 function readyGame() {
     getJSON();
-
+    startSlideshow();
     setIframe("about:blank")
 
     for (let i = 1; i <= DIAL_COUNT; i++) {
@@ -58,7 +89,13 @@ function readyGame() {
         dials.push({ canvas, context });
     }
     resetDials();
-    window.addEventListener('keydown', handleInput); // The event listener should only be initialized once ok
+
+    // ALL INPUT EVENT LISTENERS HERE OK!!!!!!!!!!!
+    // INITIALIZE THEM ONCE, ON READYGAME
+    // OK!!!!!!!!!!!!!!!!!!!!!!!
+    window.addEventListener('keydown', handleInput); 
+    window.addEventListener('keyup', handleKeyUp);
+
     Update();
 }
 
@@ -69,6 +106,7 @@ function drawDial({ canvas, context }, color) {
 
 function setDialColor( combo ) {
     dialedColor = String(combo);
+
     showConsoleLog(`[utils.js - setDialColor] Set dial color: ${dialedColor}`);
 }
 
@@ -79,7 +117,9 @@ function resetDials() {
     setDialColor("");
 }
 
-function handleInput(event) {
+function handleInput( event ) {
+    if (inTransition) return;
+
     if (event.repeat) return;
     const key = event.key.toLowerCase();
 
@@ -98,10 +138,12 @@ function handleInput(event) {
 // ---------------
 // DIAL MODE
 // ---------------
-function handleDial(key) {
+function handleDial( key ) {
+    playDialSound(key);
     if (key === 'e') {
         showConsoleLog(`[utils.js - handleDial] Reset dials`);
         resetDials();
+
         return;
     }
 
@@ -135,7 +177,6 @@ function call() {
         return;
     }
 
-    // Empty slot, add first recording
     if (!Object.hasOwn(directory, dialInput)) {
         showConsoleLog(`[utils.js - call] Empty slot, add first recording`);
         pendingEntry = dialInput;
@@ -163,8 +204,9 @@ function call() {
 // https://developer.mozilla.org/en-US/docs/Web/API/HTMLElement/blur
 // https://stackoverflow.com/questions/27550415/tabindex-doesnt-make-a-label-focusable-using-tab-key
 // https://stackoverflow.com/questions/5076409/return-focus-from-iframe-to-parent
+// https://developer.mozilla.org/en-US/docs/Web/API/Element/scrollIntoView
 // ---------------
-function handleContent(key) {
+function handleContent( key ) {
     // copy-paste this in the content html
 
     // at the very beginning
@@ -179,6 +221,7 @@ function handleContent(key) {
     //<script>
     //document.addEventListener("keydown", e => {
         //if (e.key.toLowerCase() === "e") {
+            //playDialSound(key);
             //parent.regainFocus();
         //}
     //});
@@ -192,25 +235,39 @@ function regainFocus() {
     document.body.focus();
     setFlag("NONE");
     nextState();
+
     return;
 }
 
 // ---------------
 // MESSAGE MODE
 // ---------------
-function handleMessage(key) {
+function handleKeyUp( event ) {
+    if (event.key.toLowerCase() !== 'q') return;
+    if (GAME.State !== "MESSAGE") return;
+    if (holdTimer) {
+        showConsoleLog('[utils.js - handleKeyUp] q released early');
+        cancelHoldRecord();
+    }
+}
+
+function handleMessage( key ) {
     if (key === 'e') {
+        if (isRecording) return;
+        playDialSound(key);
         showConsoleLog('[utils.js - handleMessage] e, back to DIAL mode');
         stopRecording();
         stopMessage();
         setFlag("NONE");
         nextState();
+
         return;
     }
 
     if (key === 'q') {
-        showConsoleLog('[utils.js - handleMessage] q, start recording');
-        startRecording();
+        if (isRecording) return;
+        showConsoleLog('[utils.js - handleMessage] q, starting to record...');
+        startHoldRecord();
     }
 
     if (key === 'w') {
@@ -219,24 +276,27 @@ function handleMessage(key) {
     }
 
     if (key === 'a') {
+        if (isRecording) return;
         showConsoleLog('[utils.js - handleMessage] a, previous recording');
         chooseMessage(-1);
         stopMessage();
     }
 
     if (key === 's') {
+        if (isRecording) return;
         showConsoleLog('[utils.js - handleMessage] s, next recording');
         chooseMessage(1);
         stopMessage();
     }
 
     if (key === 'd') {
+        if (isRecording) return;
         showConsoleLog('[utils.js - handleMessage] d, play recording');
         playMessage();
     }
 }
 
-function chooseMessage(step) {
+function chooseMessage( step ) {
     if (recordingItems.length === 0) {
         return;
     }
@@ -247,17 +307,26 @@ function chooseMessage(step) {
 }
 
 function playMessage() {
+    playMessageSound("start");
+
     if (recordingItems.length === 0) {
         return;
     }
 
     recordingItems.forEach(a => { if (a !== recordingItems[recordingIndex]) a.pause(); });
     const audio = recordingItems[recordingIndex];
-    audio.currentTime = 0;
-    audio.play()
+
+    userStartAudio().then(() => {
+        routeToVisualizer(audio);
+        audio.currentTime = 0;
+        audio.play();
+    });
+    
 }
 
 function stopMessage() {
+    playMessageSound("stop");
+
     if (recordingItems.length === 0) {
         return;
     }
@@ -266,27 +335,82 @@ function stopMessage() {
     recordingItems[recordingIndex].currentTime = 0;
 }
 
-function highlightMessage(toggle) {
+function highlightMessage( toggle ) {
     const audio = recordingItems[recordingIndex];
     
     if (!audio) {
         return;
     }
 
-    audio.style.outline = toggle ? "5px solid orange" : "none";
+    audio.style.outline = toggle ? "5px dotted blue" : "none";
+
+    if (toggle) {
+        // ohmygod may scrollintoview
+        audio.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
 }
 
 // ---------------
 // RECORDING AUDIO UTILS
 // https://anwaarulislaam.medium.com/build-a-voice-recorder-app-using-only-javascript-and-html-212114a468ca
 // ---------------
+function startHoldRecord() {
+    if (holdTimer) return;
+
+    const indicator = document.getElementById("message-indicator");
+    const frameTime = HOLD_TO_RECORD_TIME / 4;
+    holdIndicatorStep = 0;
+    indicator.textContent = "Hold to record";
+
+    holdIndicatorInterval = setInterval(() => {
+        holdIndicatorStep = (holdIndicatorStep % 3) + 1;
+        indicator.textContent += ".";
+    }, frameTime);
+
+    holdTimer = setTimeout(() => {
+        holdTimer = null;
+        indicator.textContent = "⋆｡˚ ☁︎ ˚｡⋆｡˚☽˚｡⋆ ";
+        stopHoldIndicator();
+        startRecording();
+    }, HOLD_TO_RECORD_TIME);
+}
+
+function stopHoldIndicator() {
+    if (holdIndicatorInterval) {
+        clearInterval(holdIndicatorInterval);
+        holdIndicatorInterval = null;
+    }
+}
+
+function restoreIndicatorText() {
+    document.getElementById("message-indicator").textContent =
+        recordingItems.length === 0 ? "Leave a message!" : "Leave a reply!";
+}
+
+function cancelHoldRecord() {
+    if (holdTimer) {
+        clearTimeout(holdTimer);
+        holdTimer = null;
+    }
+    stopHoldIndicator();
+    restoreIndicatorText();
+}
+
 function startRecording() {
+    limitReached = false;
+    stopMessage();
+
+    showConsoleLog("[utils.js - startRecording] Recording started!");
+
     if (recording || !pendingEntry) {
         return;
     }
 
-    recording = true; // Recording lock
-    const entry = pendingEntry; // Lock the folder for this recording
+    isRecording = true;
+    document.getElementById("RECORDING").hidden = false;
+    playMessageSound("record");
+    recording = true; // big lock 1
+    const entry = pendingEntry; // big lock 2
 
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
@@ -298,32 +422,49 @@ function startRecording() {
             mediaRecorder.addEventListener("dataavailable", x => audioChunks.push(x.data));
 
             mediaRecorder.addEventListener("stop", () => {
-                recordingStream.getTracks().forEach(i => i.stop()); // release the mic
+                recordingStream.getTracks().forEach(i => i.stop()); // release the mic by default
                 const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
 
-                // Save first to avoid being blocked by UI
+                // non-blocking stuff you love to see it
                 saveRecording(entry, blob);
                 addRecording(blob);
             });
 
             mediaRecorder.start();
+
+            recordingLimitTimer = setTimeout(() => {
+                showConsoleLog("[utils.js - startRecording] Time limit reached");
+                limitReached = true;
+                document.getElementById("message-indicator").textContent = "Record time limit reached...";
+                stopRecording();
+            }, MAX_RECORDING_TIME);
         })
         .catch(error => {
             recording = false;
+            isRecording = false;
+            document.getElementById("RECORDING").hidden = true;
             showConsoleLog(`[utils.js - startRecording] Error: ${error}`);
         });
 }
 
 function stopRecording() {
     if (!recording || !mediaRecorder || mediaRecorder.state === "inactive") {
+        document.getElementById("RECORDING").hidden = true;
         return;
     }
 
-    recording = false; // Release recording lock
-    mediaRecorder.stop(); // Release mediaRecorder
+    clearTimeout(recordingLimitTimer);
+    recordingLimitTimer = null;
+
+    playMessageSound("record");
+    recording = false; // big unlock
+    document.getElementById("RECORDING").hidden = true;
+    mediaRecorder.stop(); // release the mic
+
+    isRecording = false;
 }
 
-function addRecording(blob, select=true) {
+function addRecording( blob, select=true ) {
     const list = document.getElementById("recordings-list");
 
     if (!list) {
@@ -333,7 +474,14 @@ function addRecording(blob, select=true) {
     const audio = document.createElement("audio");
     audio.src = URL.createObjectURL(blob);
     audio.controls = true;
+    audio.addEventListener("ended", () => playMessageSound("stop"));
+    
+    const flavortext = document.createElement("p");
+    flavortext.textContent = FLAVORTEXTS[flavortextIndex];
+    flavortextIndex = (flavortextIndex + 1) % FLAVORTEXTS.length;
+
     list.appendChild(audio);
+    list.appendChild(flavortext);
     recordingItems.push(audio);
 
     if (select) {
@@ -341,9 +489,13 @@ function addRecording(blob, select=true) {
         recordingIndex = recordingItems.length - 1;
         highlightMessage(true);
     }
+
+    if (!limitReached) {
+        restoreIndicatorText();
+    }
 }
 
-function extFor(mimeType) {
+function extFor( mimeType ) {
     return mimeType.includes("ogg") ? "ogg" : "webm";
 }
 
@@ -377,7 +529,7 @@ async function saveRecording(name, blob) {
     showConsoleLog(`[utils.js - saveRecording] Saved: ${name}/${file}`);
 }
 
-async function loadRecordings(name) {
+async function loadRecordings( name ) {
     const token = ++loadGuard;
 
     const list = document.getElementById("recordings-list");
@@ -414,10 +566,16 @@ async function loadRecordings(name) {
         highlightMessage(true);
     }
 
+    if (recordingItems.length === 0) {
+        document.getElementById("message-indicator").textContent = "Leave a message!";
+    } else {
+        document.getElementById("message-indicator").textContent = "Leave a reply!";
+    }
+
     showConsoleLog(`[utils.js - loadRecordings] Loaded ${files.length} recordings for ${name}`);
 }
 
-async function addDirectoryEntry(name) {
+async function addDirectoryEntry( name ) {
     directory[name] = "message";
 
     const res = await fetch(`${MESSAGE_SERVER}/directory`, {
